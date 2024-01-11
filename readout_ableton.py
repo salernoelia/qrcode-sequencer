@@ -4,7 +4,6 @@ import numpy as np
 import time
 import live
 
-
 # Function to decode barcodes and QR codes
 def decode_barcodes(image, qr_data_list):
     # Convert the image to grayscale
@@ -30,40 +29,57 @@ def decode_barcodes(image, qr_data_list):
 
     return image
 
+
 def control_live_tracks(qr_codes):
     try:
-        # Get the current Live set
-        live_set = live.Set()
+        # Connect to the Live set
+        live_set = live.Set(scan=True)
+        live_set.tempo = 110.0
+
+        # Get all tracks in the set
+        tracks = live_set.tracks
+        print(f"Total tracks: {len(tracks)}")  # Print the total number of tracks
+
+        # Assuming that qr_codes contain track indices to be triggered
+        for qr_code in qr_codes:
+            try:
+                # Convert qr_code to track index (assuming it's an integer)
+                track_index = int(qr_code) - 1  # Subtract 1 because Live API uses 0-based indexing
+
+                # Check if the track index is within the valid range
+                if 0 <= track_index < len(tracks):
+                    # Get the track
+                    track = tracks[track_index]
+
+                    # Check if the track has clips
+                    if not track.clips:
+                        print(f"Track {track_index + 1} has no clips.")
+                        continue
+
+                    # Launch the first clip in the track
+                    clip = track.clips[0]
+
+                    # Check if the clip is not None and is playable
+                    if clip and not clip.is_playing:
+                        # Stop any playing clips in the track
+                        for other_clip in track.clips:
+                            if other_clip and other_clip.is_playing:
+                                other_clip.stop()
+
+                        clip.play()  # Trigger the playback of the clip
+                        print(f"Launched clip in track {track_index + 1}")
+                    elif clip:
+                        print(f"Clip in track {track_index + 1} is already playing.")
+                else:
+                    print(f"Track index {track_index + 1} is out of range.")
+            except ValueError:
+                print(f"Invalid QR code: {qr_code}")
     except Exception as e:
-        print(f"Error getting Live set: {e}")
-        return
-
-    # Get all tracks in the set
-    tracks = live_set.tracks
-
-    # Assuming that qr_codes contain track indices to be triggered
-    for qr_code in qr_codes:
-        try:
-            # Convert qr_code to track index (assuming it's an integer)
-            track_index = int(qr_code) - 1  # Subtract 1 because Live API uses 0-based indexing
-
-            # Check if the track index is within the valid range
-            if 0 <= track_index < len(tracks):
-                # Get the track
-                track = tracks[track_index]
-                
-                # Launch the first clip in the track
-                # Adjust this based on your actual Ableton Live API calls
-                clip = track.clips[0]
-                clip.play()
-
-                print(f"Launched clip in track {track_index + 1}")
-        except ValueError:
-            print(f"Invalid QR code: {qr_code}")
-        except Exception as e:
-            print(f"Error controlling Live tracks: {e}")
+        print(f"Error controlling Live tracks: {e}")
 
     print("Finished controlling Live tracks")
+
+
 
 
 
